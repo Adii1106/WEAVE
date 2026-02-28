@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
+    "dev": "node --watch src/server.js & node --watch src/signaling.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -16,8 +16,11 @@
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
-    "lib0": "^0.2.117",
     "mongoose": "^9.2.3",
+    "multer": "^2.1.0"
+  },
+  "devDependencies": {
+    "lib0": "^0.2.117",
     "ws": "^8.19.0"
   }
 }

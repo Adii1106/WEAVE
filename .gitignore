@@ -1,0 +1,27 @@
+# Root .gitignore for WEAVE
+
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment
+.env
+client/.env
+server/.env
+
+# Builds
+dist/
+build/
+client/dist/
+
+# OS Files
+.DS_Store
+
+# User Uploads (Hackathon images)
+server/uploads/
+uploads/
+
+# Logs
+*.log
+npm-debug.log*
