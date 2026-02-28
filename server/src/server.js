@@ -14,6 +14,12 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+const authRoutes = require('./routes/auth');
+const roomRoutes = require('./routes/room');
+
+app.use('/api/auth', authRoutes);
+app.use('/api/room', roomRoutes);
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'WEAVE Server is running' });
 });
