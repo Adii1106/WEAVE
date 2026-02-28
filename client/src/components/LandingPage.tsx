@@ -7,6 +7,7 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onJoinSession }: LandingPageProps) {
+    // User state for our entry form
     const [name, setName] = useState('');
     const [room, setRoom] = useState('');
 
@@ -25,7 +26,7 @@ export default function LandingPage({ onJoinSession }: LandingPageProps) {
     return (
         <div className="landing-container">
             <div className="landing-card">
-                <h1>WEAVE</h1>
+                <h1>WEAVE</h1> {/* Our cool project name! */}
                 <p>Decentralized Real-Time Collaboration</p>
 
                 <div className="input-group">
