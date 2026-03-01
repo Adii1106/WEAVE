@@ -154,7 +154,7 @@ export default function CustomUI({ storeWithStatus }: { storeWithStatus: any }) 
 
             <div style={{
                 position: 'absolute',
-                bottom: 60,
+                top: 60,
                 right: 20,
                 zIndex: 9999,
                 display: 'flex',
