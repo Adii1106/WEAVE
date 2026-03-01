@@ -3,6 +3,7 @@ import { Tldraw, type TLAsset } from '@tldraw/tldraw';
 import '@tldraw/tldraw/tldraw.css';
 import LandingPage from './components/LandingPage';
 import { useYjsStore } from './useYjsStore';
+import CustomUI from './components/CustomUI';
 
 export default function App() {
   const [userName, setUserName] = useState('');
@@ -12,7 +13,7 @@ export default function App() {
   // This connects us to the sharing network
   const storeWithStatus = useYjsStore({
     roomId: sessionId,
-    hostUrl: 'ws://localhost:5001' // Our local signaling server
+    hostUrl: '' // Let the hook decide the dynamic URL
   });
 
   const handleJoinSession = (name: string, session: string) => {
@@ -29,6 +30,9 @@ export default function App() {
   // This handles uploading images to our server
   // We need this because WebRTC is too slow for big files
   const imageService = useMemo(() => {
+    // Determine the backend URL dynamically
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:5002`;
+
     return {
       upload: async (_asset: TLAsset, file: File) => {
         const formData = new FormData();
@@ -36,7 +40,7 @@ export default function App() {
 
         try {
           // Upload to our Express backend
-          const response = await fetch('http://localhost:5002/api/upload', {
+          const response = await fetch(`${backendUrl}/api/upload`, {
             method: 'POST',
             body: formData,
           });
@@ -108,7 +112,9 @@ export default function App() {
             store={storeWithStatus.store}
             autoFocus
             assets={imageService}
-          />
+          >
+            <CustomUI storeWithStatus={storeWithStatus} />
+          </Tldraw>
         </>
       )}
     </div>
