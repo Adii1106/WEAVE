@@ -34,16 +34,16 @@ export default function CustomUI({ storeWithStatus }: { storeWithStatus: any }) 
             }
             setPresenterId(currentPresenter);
 
-            // Sync camera for everyone else if I'm not the one presenting
-            const myId = provider.awareness.clientID.toString(); // String to match currentPresenter type
-            const someoneElsePresenting = currentPresenter !== null && currentPresenter !== myId;
+            // CRITICAL: Check if I am the one currently presenting via local state
+            // This is more reliable than ID comparison
+            const iAmPresenting = !!provider.awareness.getLocalState()?.isPresenting;
 
-            // LOCK/UNLOCK editing: Follower should be locked, Presenter should be unlocked.
-            if (someoneElsePresenting) {
-                console.log('Board locked: Following the presenter');
+            // LOCK/UNLOCK editing: Follower should be locked, Presenter should ALWAYS be unlocked.
+            if (currentPresenter !== null && !iAmPresenting) {
+                // Someone else is presenting and I am NOT presenting → lock my board
                 editor.updateInstanceState({ isReadonly: true });
             } else {
-                console.log('Board unlocked: You can draw now');
+                // Nobody is presenting, OR I am the presenter → unlock my board
                 editor.updateInstanceState({ isReadonly: false });
             }
         };
