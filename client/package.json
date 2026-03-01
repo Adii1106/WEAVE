@@ -13,8 +13,10 @@
     "@tldraw/tldraw": "^4.4.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "simple-peer": "^9.11.1",
     "socket.io-client": "^4.8.3",
     "uuid": "^13.0.0",
+    "vite-plugin-node-polyfills": "^0.25.0",
     "y-webrtc": "^10.3.0",
     "yjs": "^13.6.29"
   },
@@ -23,6 +25,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/simple-peer": "^9.11.9",
     "@vitejs/plugin-react": "^5.1.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",

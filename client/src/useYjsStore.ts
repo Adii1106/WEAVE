@@ -9,56 +9,94 @@ import {
 import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 
-// This hook handles our real-time P2P sync using Yjs and WebRTC
-// It's basically the "brain" of our multiplayer whiteboard
 export function useYjsStore({ roomId, hostUrl }: { roomId: string; hostUrl: string }) {
-    const [storeWithStatus, setStoreWithStatus] = useState<TLStoreWithStatus & { peerCount: number }>({
+    const [storeWithStatus, setStoreWithStatus] = useState<TLStoreWithStatus & {
+        peerCount: number,
+        provider?: WebrtcProvider,
+        ydoc?: Y.Doc,
+        yChat?: Y.Array<any>,
+        updateHistory?: Uint8Array[],
+        historyTriggers?: number,
+        setSyncPaused?: (paused: boolean) => void
+    }>({
         status: 'loading',
-        peerCount: 1
+        peerCount: 1,
+        historyTriggers: 0
     });
 
     useEffect(() => {
-        // Create a local tldraw store
+        if (!roomId) return;
+
         const store = createTLStore({ shapeUtils: defaultShapeUtils });
-
-        // Setup Yjs document - our "shared memory"
         const ydoc = new Y.Doc();
+        console.log('--- WEAVE DIAGNOSTIC START ---');
+        console.log('Connecting to ONLY local signaling:', hostUrl, 'Room:', roomId);
 
-        // Connect to the P2P network via our signaling server
         const provider = new WebrtcProvider(roomId, ydoc, {
             signaling: [hostUrl],
         });
 
-        // The shared map where all our whiteboard data lives
-        const yStore = ydoc.getMap<TLRecord>('tldraw');
+        provider.on('status', (event: any) => {
+            console.log('WebRTC Provider Status Event:', event);
+        });
 
-        // Track how many people are in the room
+        provider.on('synced', (event: any) => {
+            console.log('WebRTC Provider Synced Event:', event);
+        });
+
+        const yStore = ydoc.getMap<TLRecord>('tldraw');
+        const yChat = ydoc.getArray<any>('chat_messages');
+        const updateHistory: Uint8Array[] = [];
+        let isPaused = false;
+
+        updateHistory.push(Y.encodeStateAsUpdate(ydoc));
+
         const handleAwareness = () => {
             const count = provider.awareness.getStates().size;
             setStoreWithStatus(s => ({ ...s, peerCount: count || 1 }));
         };
         provider.awareness.on('change', handleAwareness);
 
-        // Filter for records that are local-only (like camera zoom or pointers)
-        // We don't want to sync these or everyone's screens would jump around!
         const isLocalOnly = (record: TLRecord) => {
             return [
-                'camera',
-                'instance',
-                'instance_page_state',
-                'page_states',
-                'pointer',
-                'instance_presence'
+                'camera', 'instance', 'instance_page_state', 'page_states', 'pointer', 'instance_presence'
             ].includes(record.typeName);
         };
 
-        // --- 1. SENDING CHANGES (Tldraw -> Yjs) ---
+        const handleSync = () => {
+            console.log('WebRTC Initial Sync Complete');
+            const records = Array.from(yStore.values()).filter(r => !isLocalOnly(r));
+            if (records.length > 0) {
+                store.mergeRemoteChanges(() => {
+                    store.put(records);
+                });
+            }
+            setStoreWithStatus(s => ({
+                ...s,
+                status: 'synced-remote',
+                connectionStatus: 'online',
+                store,
+                provider,
+                ydoc,
+                yChat,
+                updateHistory,
+                setSyncPaused: (paused: boolean) => { isPaused = paused; }
+            } as any));
+        };
+
+        ydoc.on('update', (update) => {
+            updateHistory.push(update);
+            setStoreWithStatus(s => ({ ...s, historyTriggers: (s.historyTriggers || 0) + 1 }));
+        });
+
         const unlisten = store.listen(
-            throttle((history) => {
-                // If the change came from another user, don't send it back!
-                if (history.source === 'remote') return;
+            throttle((history: any) => {
+                if (history.source === 'remote' || isPaused) return;
 
                 const { added, updated, removed } = history.changes;
+                const addedCount = added ? Object.keys(added).length : 0;
+                if (addedCount > 0) console.log('Syncing', addedCount, 'new shapes to Yjs...');
+
                 ydoc.transact(() => {
                     if (added) {
                         Object.values(added).forEach((record) => {
@@ -82,13 +120,10 @@ export function useYjsStore({ roomId, hostUrl }: { roomId: string; hostUrl: stri
             }, 16)
         );
 
-        // --- 2. RECEIVING CHANGES (Yjs -> Tldraw) ---
         const handleYUpdate = (e: Y.YMapEvent<TLRecord>) => {
             if (e.transaction.local) return;
-
             const toPut: TLRecord[] = [];
             const toRemove: string[] = [];
-
             e.changes.keys.forEach((change, id) => {
                 switch (change.action) {
                     case 'add':
@@ -103,8 +138,6 @@ export function useYjsStore({ roomId, hostUrl }: { roomId: string; hostUrl: stri
                     }
                 }
             });
-
-            // Update our local whiteboard with the new data from peers
             if (toPut.length > 0 || toRemove.length > 0) {
                 store.mergeRemoteChanges(() => {
                     if (toRemove.length > 0) store.remove(toRemove as any);
@@ -114,25 +147,8 @@ export function useYjsStore({ roomId, hostUrl }: { roomId: string; hostUrl: stri
         };
 
         yStore.observe(handleYUpdate);
-
-        // Initial sync when we first join the room
-        const handleSync = () => {
-            const records = Array.from(yStore.values()).filter(r => !isLocalOnly(r));
-            if (records.length > 0) {
-                store.mergeRemoteChanges(() => {
-                    store.put(records);
-                });
-            }
-            setStoreWithStatus(s => ({
-                ...s,
-                status: 'synced-remote' as any,
-                store
-            }));
-        };
-
         provider.on('synced', handleSync);
 
-        // Cleanup everything when the component unmounts
         return () => {
             unlisten();
             yStore.unobserve(handleYUpdate);
