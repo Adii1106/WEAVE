@@ -18,5 +18,6 @@ export default defineConfig({
   define: {
     // Explicitly shim global to window for libraries like simple-peer
     global: 'window',
+    'process.env.NODE_ENV': JSON.stringify('development'),
   },
 })

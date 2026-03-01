@@ -128,7 +128,6 @@ export default function App() {
             store={storeWithStatus.store}
             autoFocus
             assets={imageService}
-            licenseKey="hackathon-presentation-2024"
           >
             <CustomUI storeWithStatus={storeWithStatus} />
           </Tldraw>
