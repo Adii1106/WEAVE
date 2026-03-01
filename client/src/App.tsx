@@ -10,10 +10,15 @@ export default function App() {
   const [sessionId, setSessionId] = useState('');
   const [inSession, setInSession] = useState(false);
 
+  // Determine the backend/signaling URLs dynamically
+  const isProd = window.location.hostname !== 'localhost';
+  const backendBaseUrl = import.meta.env.VITE_BACKEND_URL || (isProd ? `https://${window.location.hostname.replace('frontend', 'backend')}` : 'http://localhost:5002');
+  const signalingUrl = backendBaseUrl.replace('http', 'ws');
+
   // This connects us to the sharing network
   const storeWithStatus = useYjsStore({
     roomId: sessionId,
-    hostUrl: '' // Let the hook decide the dynamic URL
+    hostUrl: signalingUrl
   });
 
   const handleJoinSession = (name: string, session: string) => {
@@ -28,27 +33,20 @@ export default function App() {
   };
 
   // This handles uploading images to our server
-  // We need this because WebRTC is too slow for big files
   const imageService = useMemo(() => {
-    // Determine the backend URL dynamically
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:5002`;
-
     return {
       upload: async (_asset: TLAsset, file: File) => {
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-          // Upload to our Express backend
-          const response = await fetch(`${backendUrl}/api/upload`, {
+          const response = await fetch(`${backendBaseUrl}/api/upload`, {
             method: 'POST',
             body: formData,
           });
-
           if (!response.ok) throw new Error('Upload failed');
-
           const data = await response.json();
-          return { src: data.url }; // Return the URL for everyone else to see
+          return { src: data.url };
         } catch (e) {
           console.error('Upload error:', e);
           throw e;
@@ -58,7 +56,7 @@ export default function App() {
         return asset.props.src;
       }
     };
-  }, []);
+  }, [backendBaseUrl]);
 
   return (
     <div style={{ position: 'fixed', inset: 0 }}>
@@ -107,11 +105,11 @@ export default function App() {
             </span>
           </div>
 
-          {/* Core Whiteboard Component */}
           <Tldraw
             store={storeWithStatus.store}
             autoFocus
             assets={imageService}
+            licenseKey="hackathon-presentation-2024"
           >
             <CustomUI storeWithStatus={storeWithStatus} />
           </Tldraw>
